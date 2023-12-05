@@ -30,16 +30,16 @@ func Monitor(cfg *config.Config) {
 	for _, endpoint := range cfg.Endpoints {
 		if endpoint.IsEnabled() {
 			// To prevent multiple requests from running at the same time, we'll wait for a little before each iteration
-			time.Sleep(777 * time.Millisecond)
-			go monitor(endpoint, cfg.Alerting, cfg.Maintenance, cfg.Connectivity, cfg.DisableMonitoringLock, cfg.Metrics, cfg.Debug, ctx)
+			time.Sleep(7 * time.Millisecond)
+			go monitor(cfg, endpoint, cfg.Alerting, cfg.Maintenance, cfg.Connectivity, cfg.DisableMonitoringLock, cfg.Metrics, cfg.Debug, ctx)
 		}
 	}
 }
 
 // monitor a single endpoint in a loop
-func monitor(endpoint *core.Endpoint, alertingConfig *alerting.Config, maintenanceConfig *maintenance.Config, connectivityConfig *connectivity.Config, disableMonitoringLock, enabledMetrics, debug bool, ctx context.Context) {
+func monitor(cfg *config.Config, endpoint *core.Endpoint, alertingConfig *alerting.Config, maintenanceConfig *maintenance.Config, connectivityConfig *connectivity.Config, disableMonitoringLock, enabledMetrics, debug bool, ctx context.Context) {
 	// Run it immediately on start
-	execute(endpoint, alertingConfig, maintenanceConfig, connectivityConfig, disableMonitoringLock, enabledMetrics, debug)
+	execute(cfg, endpoint, alertingConfig, maintenanceConfig, connectivityConfig, disableMonitoringLock, enabledMetrics, debug)
 	// Loop for the next executions
 	for {
 		select {
@@ -47,12 +47,12 @@ func monitor(endpoint *core.Endpoint, alertingConfig *alerting.Config, maintenan
 			log.Printf("[watchdog][monitor] Canceling current execution of group=%s; endpoint=%s", endpoint.Group, endpoint.Name)
 			return
 		case <-time.After(endpoint.Interval):
-			execute(endpoint, alertingConfig, maintenanceConfig, connectivityConfig, disableMonitoringLock, enabledMetrics, debug)
+			execute(cfg, endpoint, alertingConfig, maintenanceConfig, connectivityConfig, disableMonitoringLock, enabledMetrics, debug)
 		}
 	}
 }
 
-func execute(endpoint *core.Endpoint, alertingConfig *alerting.Config, maintenanceConfig *maintenance.Config, connectivityConfig *connectivity.Config, disableMonitoringLock, enabledMetrics, debug bool) {
+func execute(cfg *config.Config, endpoint *core.Endpoint, alertingConfig *alerting.Config, maintenanceConfig *maintenance.Config, connectivityConfig *connectivity.Config, disableMonitoringLock, enabledMetrics, debug bool) {
 	if !disableMonitoringLock {
 		// By placing the lock here, we prevent multiple endpoints from being monitored at the exact same time, which
 		// could cause performance issues and return inaccurate results
@@ -69,7 +69,7 @@ func execute(endpoint *core.Endpoint, alertingConfig *alerting.Config, maintenan
 	}
 	result := endpoint.EvaluateHealth()
 	if enabledMetrics {
-		metrics.PublishMetricsForEndpoint(endpoint, result)
+		metrics.PublishMetricsForEndpoint(cfg.Project, endpoint, result)
 	}
 	UpdateEndpointStatuses(endpoint, result)
 	if debug && !result.Success {

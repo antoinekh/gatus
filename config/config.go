@@ -55,6 +55,9 @@ type Config struct {
 	// Debug Whether to enable debug logs
 	Debug bool `yaml:"debug,omitempty"`
 
+	// Project name
+	Project string `yaml:"project"`
+
 	// Metrics Whether to expose metrics at /metrics
 	Metrics bool `yaml:"metrics,omitempty"`
 
